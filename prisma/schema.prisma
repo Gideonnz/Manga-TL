@@ -1,0 +1,107 @@
+// Prisma Schema for Manga Translation App
+// SQLite database (local file)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Series {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?
+  coverImage  String?
+  author      String?
+  status      SeriesStatus @default(ONGOING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  chapters    Chapter[]
+
+  @@index([slug])
+}
+
+enum SeriesStatus {
+  ONGOING
+  COMPLETED
+  HIATUS
+  DROPPED
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  seriesId    String
+  series      Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  number      Float    // supports 1, 1.5, etc.
+  title       String?
+  volume      Int?
+  language    String   @default("jp") // source language
+  targetLangs String[] @default(["id"]) // target languages
+  status      ChapterStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  pages       Page[]
+
+  @@unique([seriesId, number])
+  @@index([seriesId])
+}
+
+enum ChapterStatus {
+  DRAFT
+  OCR_PROCESSING
+  OCR_DONE
+  TRANSLATING
+  TRANSLATED
+  PROOFREADING
+  PUBLISHED
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  number    Int      // page number in chapter
+  imagePath String   // relative path in storage
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+  bubbles   Bubble[]
+
+  @@unique([chapterId, number])
+  @@index([chapterId])
+}
+
+model Bubble {
+  id            String   @id @default(cuid())
+  pageId        String
+  page          Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  x             Float    // percentage 0-100
+  y             Float
+  width         Float
+  height        Float
+  originalText  String?  // OCR result
+  translations  Translation[]
+  order         Int      @default(0) // reading order
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([pageId])
+}
+
+model Translation {
+  id        String   @id @default(cuid())
+  bubbleId  String
+  bubble    Bubble   @relation(fields: [bubbleId], references: [id], onDelete: Cascade)
+  language  String   // e.g., "id", "en"
+  text      String
+  isAuto    Boolean  @default(false) // machine translated
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bubbleId, language])
+  @@index([bubbleId])
+}
