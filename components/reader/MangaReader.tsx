@@ -13,7 +13,7 @@ interface MangaReaderProps {
     pages: Array<{
       id: string
       number: number
-      imagePath: string
+      imageKey: string
       bubbles: Array<{
         id: string
         x: number
@@ -41,7 +41,6 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
   const pages = chapter.pages
   const totalPages = pages.length
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
@@ -65,12 +64,10 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
   const currentPageData = pages[currentPage]
 
   // Image URL
-  const imageUrl = currentPageData ? `/api/images/${currentPageData.imagePath}` : ''
+  const imageUrl = currentPageData ? `/api/images/${currentPageData.imageKey}` : ''
 
-  // Get bubbles for current page
   const bubbles = currentPageData?.bubbles || []
 
-  // Overlay bubbles on image
   const bubbleOverlays = showTranslation ? bubbles.map((bubble) => {
     const translation = bubble.translations.find(t => t.language === selectedLang)
     const text = translation?.text || bubble.originalText || ''
@@ -81,10 +78,10 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
         key={bubble.id}
         className="absolute pointer-events-none"
         style={{
-          left: `${bubble.x}%`,
-          top: `${bubble.y}%`,
-          width: `${bubble.width}%`,
-          height: `${bubble.height}%`,
+          left: ${bubble.x}%`,
+          top: ${bubble.y}%`,
+          width: ${bubble.width}%`,
+          height: ${bubble.height}%`,
         }}
       >
         <div
@@ -125,7 +122,6 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
 
   return (
     <div className={cn('min-h-screen transition-colors', darkMode ? 'bg-black' : 'bg-white')}>
-      {/* Top Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent dark:from-black/90">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -190,14 +186,11 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
         </div>
       </header>
 
-      {/* Progress Bar */}
-      <div className="fixed top-16 left-0 right-0 z-30 h-1 bg-gradient-to-r from-primary-600 to-primary-400" style={{ width: `${((currentPage + 1) / totalPages) * 100}%` }} />
+      <div className="fixed top-16 left-0 right-0 z-30 h-1 bg-gradient-to-r from-primary-600 to-primary-400" style={{ width: ${((currentPage + 1) / totalPages) * 100}%` }} />
 
-      {/* Reader Area */}
       <main className="pt-20 pb-20 px-4">
         <div className="max-w-5xl mx-auto">
           {readingMode === 'manga' ? (
-            // Manga mode - single page
             <div className="relative">
               <div className="relative aspect-[3/4] bg-gray-900 rounded-xl overflow-hidden shadow-2xl">
                 <img
@@ -208,7 +201,6 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
                 <div className="absolute inset-0">{bubbleOverlays}</div>
               </div>
 
-              {/* Navigation */}
               <div className="flex justify-center gap-4 mt-6">
                 <button
                   onClick={goPrev}
@@ -232,13 +224,12 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
               </div>
             </div>
           ) : (
-            // Webtoon mode - vertical scroll
             <div className="space-y-4">
               {pages.map((page, index) => (
                 <div key={page.id} className="relative">
                   <div className="relative bg-gray-900 rounded-xl overflow-hidden shadow-xl">
                     <img
-                      src={`/api/images/${page.imagePath}`}
+                      src={`/api/images/${page.imageKey}`}
                       alt={`Page ${page.number}`}
                       className="w-full h-auto object-contain"
                       loading={index > currentPage + 2 ? 'lazy' : 'eager'}
@@ -252,10 +243,10 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
                           key={bubble.id}
                           className="absolute pointer-events-none"
                           style={{
-                            left: `${bubble.x}%`,
-                            top: `${bubble.y}%`,
-                            width: `${bubble.width}%`,
-                            height: `${bubble.height}%`,
+                            left: ${bubble.x}%`,
+                            top: ${bubble.y}%`,
+                            width: ${bubble.width}%`,
+                            height: ${bubble.height}%`,
                           }}
                         >
                           <div
@@ -280,7 +271,6 @@ export function MangaReader({ chapter, targetLangs, sourceLang }: MangaReaderPro
         </div>
       </main>
 
-      {/* Bottom Bar */}
       <footer className="fixed bottom-0 left-0 right-0 z-40 px-4 py-3 bg-gradient-to-t from-black/80 to-transparent dark:from-black/90">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">

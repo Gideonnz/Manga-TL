@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 
-const OCR_API_URL = process.env.OCR_API_URL || 'http://localhost:8001'
+const OCR_API_URL = process.env.OCR_API_URL
+const OCR_API_KEY = process.env.OCR_API_KEY
 const OCR_ENABLED = process.env.OCR_ENABLED === 'true'
 
 export interface OCRResult {
@@ -20,6 +21,10 @@ export async function triggerOCR(pageId: string): Promise<OCRResult | null> {
     return null
   }
 
+  if (!OCR_API_URL) {
+    throw new Error('OCR_API_URL not configured')
+  }
+
   const page = await prisma.page.findUnique({
     where: { id: pageId },
     include: { chapter: { include: { series: true } } },
@@ -27,17 +32,25 @@ export async function triggerOCR(pageId: string): Promise<OCRResult | null> {
 
   if (!page) throw new Error('Page not found')
 
-  const imagePath = await getFilePath(page.imagePath)
+  const imageUrl = getPublicUrl(page.imagePath)
   
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (OCR_API_KEY) {
+      headers['Authorization'] = `Bearer ${OCR_API_KEY}`
+    }
+
     const response = await fetch(`${OCR_API_URL}/ocr`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_path: imagePath }),
+      headers,
+      body: JSON.stringify({ image_url: imageUrl }),
     })
 
     if (!response.ok) {
-      throw new Error(`OCR API error: ${response.statusText}`)
+      const err = await response.text()
+      throw new Error(`OCR API error: ${response.status} - ${err}`)
     }
 
     const result: OCRResult = await response.json()
@@ -64,19 +77,14 @@ export async function saveOCRResults(pageId: string, results: OCRResult) {
   }))
 
   await prisma.bubble.createMany({ data: bubbles })
-
-  // Update page status
-  await prisma.page.update({
-    where: { id: pageId },
-    data: { /* status will be derived from chapter */ },
-  })
-
   return bubbles
 }
 
-async function getFilePath(relativePath: string) {
-  const UPLOAD_DIR = process.env.UPLOAD_DIR || './data/uploads'
-  return path.join(UPLOAD_DIR, relativePath)
+function getPublicUrl(key: string): string {
+  const publicUrl = process.env.R2_PUBLIC_URL
+  if (publicUrl) {
+    return `${publicUrl}/${key}`
+  }
+  // This would need the storage function - simplified here
+  return `${process.env.NEXT_PUBLIC_APP_URL}/api/images/${key}`
 }
-
-import path from 'path'

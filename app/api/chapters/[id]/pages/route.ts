@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
-import { saveUploadedFile } from '@/lib/storage'
+import { uploadFile } from '@/lib/storage'
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +35,7 @@ export async function POST(
       const buffer = Buffer.from(await file.arrayBuffer())
       const pageNumber = existingPages + i + 1
       
-      const relativePath = await saveUploadedFile(
+      const key = await uploadFile(
         buffer,
         file.name,
         chapter.series.slug,
@@ -46,13 +46,12 @@ export async function POST(
         data: {
           chapterId: id,
           number: pageNumber,
-          imagePath: relativePath,
+          imageKey: key,
         },
       })
       results.push(page)
     }
 
-    // Update chapter status
     await prisma.chapter.update({
       where: { id },
       data: { status: 'OCR_DONE' },

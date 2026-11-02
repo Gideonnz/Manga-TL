@@ -37,8 +37,6 @@ next-env.d.ts
 # prisma
 prisma/migrations/
 
-# local storage
-data/
 
 # python
 __pycache__/

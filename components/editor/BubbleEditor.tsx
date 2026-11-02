@@ -20,7 +20,7 @@ interface BubbleEditorProps {
   page: {
     id: string
     number: number
-    imagePath: string
+    imageKey: string
     width: number | null
     height: number | null
     bubbles: Bubble[]
@@ -38,12 +38,10 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
   const [editingLang, setEditingLang] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [imageLoaded, setImageLoaded] = useState(false)
-  const [transformerRef, setTransformerRef] = useRef<Konva.Transformer>(null)
 
-  // Image URL
-  const imageUrl = `/api/images/${page.imagePath}`
+  // Image URL - use API route
+  const imageUrl = \`/api/images/${page.imageKey}\`
 
-  // Handle container resize
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -57,7 +55,6 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Handle bubble click
   const handleBubbleClick = useCallback((bubble: Bubble, e: React.MouseEvent) => {
     e.stopPropagation()
     setSelectedBubble(bubble)
@@ -66,13 +63,11 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
     setEditText(translation?.text || bubble.originalText || '')
   }, [targetLangs])
 
-  // Handle stage click (deselect)
   const handleStageClick = useCallback(() => {
     setSelectedBubble(null)
     setEditingLang(null)
   }, [])
 
-  // Save translation
   const handleSave = useCallback(() => {
     if (selectedBubble && editingLang) {
       onSave(selectedBubble.id, editingLang, editText)
@@ -81,12 +76,10 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
     }
   }, [selectedBubble, editingLang, editText, onSave])
 
-  // Get translation for bubble
   const getTranslation = (bubble: Bubble, lang: string) => {
     return bubble.translations.find(t => t.language === lang)?.text || ''
   }
 
-  // Draw bubbles on canvas
   const bubbles = page.bubbles.map((bubble) => {
     const isSelected = selectedBubble?.id === bubble.id
     const translation = getTranslation(bubble, targetLangs[0])
@@ -130,7 +123,7 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
         <Text
           x={4}
           y={-20}
-          text={`#${bubble.order + 1}`}
+          text={\`#${bubble.order + 1}\`}
           fontSize={10}
           fontFamily="'Inter', sans-serif"
           fill="#6b7280"
@@ -139,15 +132,12 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
     )
   })
 
-  // Transformer for selected bubble
   const transformer = selectedBubble ? (
     <Transformer
-      ref={setTransformerRef}
-      node={stageRef.current?.findOne(`#${selectedBubble.id}`) as any}
+      node={stageRef.current?.findOne(\`#${selectedBubble.id}\`) as any}
       enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
       rotateEnabled={false}
       boundBoxFunc={(oldBox, newBox) => {
-        // Constrain to stage bounds
         if (newBox.x < 0) newBox.x = 0
         if (newBox.y < 0) newBox.y = 0
         if (newBox.x + newBox.width > stageSize.width) {
@@ -165,8 +155,7 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
         const newWidth = (node.width() / stageSize.width) * 100
         const newHeight = (node.height() / stageSize.height) * 100
         
-        // Update bubble position/size via API
-        fetch(`/api/chapters/bubbles/${selectedBubble.id}`, {
+        fetch(\`/api/chapters/bubbles/${selectedBubble.id}\`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ x: newX, y: newY, width: newWidth, height: newHeight }),
@@ -175,7 +164,6 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
     />
   ) : null
 
-  // Editing panel
   const editingPanel = selectedBubble && editingLang ? (
     <div className="fixed bottom-4 right-4 left-4 md:left-auto md:w-96 bg-white rounded-xl border border-gray-200 shadow-xl p-4 z-50 animate-slide-up">
       <div className="flex items-center justify-between mb-3">
@@ -260,7 +248,7 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
             width={stageSize.width}
             height={stageSize.height}
             onLoad={() => setImageLoaded(true)}
-            alt={`Page ${page.number}`}
+            alt={\`Page ${page.number}\`}
           />
           {bubbles}
           {transformer}
@@ -268,13 +256,13 @@ export function BubbleEditor({ page, targetLangs, showOriginal, onSave }: Bubble
       </Stage>
       {editingPanel}
       
-      <style jsx>{`
+      <style jsx>{\`
         @keyframes slide-up {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-slide-up { animation: slide-up 0.2s ease-out; }
-      `}</style>
+      \`}</style>
     </div>
   )
 }

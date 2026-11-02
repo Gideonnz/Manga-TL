@@ -1,190 +1,178 @@
-# Manga TL - Local-First Manga Translation Tool
+# Manga TL - Manga Translation Workflow
 
-A complete manga translation workflow running entirely on your machine. No cloud costs, full privacy.
+Production-ready manga translation tool for Vercel + Cloudflare R2 + API-based OCR/MTL.
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
+│   Vercel    │────▶│  Cloudflare R2   │     │  External   │
+│  (Next.js)  │     │  (Images)        │     │  APIs       │
+└─────────────┘     └──────────────────┘     └─────────────┘
+                           │                        │
+                    ┌──────┴──────┐         ┌───────┴────────┐
+                    │ PostgreSQL  │         │ OCR: Custom    │
+                    │ (Supabase/  │         │ MTL: DeepL,    │
+                    │  Neon)      │         │ LibreTranslate,│
+                    └─────────────┘         │ Google, OpenAI │
+                                            └────────────────┘
+```
 
 ## Features
 
-- **Series & Chapter Management** - Organize manga projects
-- **Image Upload** - Drag & drop multiple pages per chapter
-- **OCR (Optical Character Recognition)** - Auto-detect text bubbles using Manga-OCR
-- **Bubble Editor** - Visual editor to adjust bubble positions and edit translations
-- **Machine Translation** - Local LLM via Ollama (qwen2.5, llama3.1) or LibreTranslate
-- **Multi-language** - Support for multiple target languages per chapter
-- **Reader Mode** - Manga (right-to-left) and Webtoon (vertical scroll) views
-- **Export** - JSON export for typesetting workflows
-- **Zero Cost** - Runs entirely locally, no API keys needed
+- **Series & Chapter Management** - Full CRUD with dashboard
+- **Image Upload** - Direct to Cloudflare R2 (S3-compatible)
+- **OCR** - Pluggable API (host your own Manga-OCR or use Google Vision/AWS)
+- **Bubble Editor** - Visual Konva.js canvas editor
+- **Machine Translation** - Multiple providers: DeepL, LibreTranslate, Google, OpenAI-compatible
+- **Multi-language** - Multiple target languages per chapter
+- **Reader Modes** - Manga (right-to-left) & Webtoon (vertical scroll)
+- **Export** - JSON for typesetting workflows
+- **Vercel Ready** - Serverless functions, edge compatible
 
-## Tech Stack
+## Quick Start (Vercel)
 
-- **Frontend**: Next.js 14 + TypeScript + Tailwind CSS
-- **Database**: SQLite (via Prisma ORM)
-- **Auth**: Simple password-based (iron-session)
-- **Storage**: Local filesystem
-- **OCR**: Manga-OCR (Python/FastAPI)
-- **MTL**: Ollama (local LLM) + LibreTranslate fallback
-- **Editor**: Konva.js (HTML5 Canvas)
+### 1. Prerequisites
+- GitHub account
+- Vercel account
+- Cloudflare R2 bucket (or AWS S3)
+- PostgreSQL database (Supabase, Neon, Railway)
+- API keys for OCR & MTL providers
 
-## Quick Start
+### 2. Deploy to Vercel
 
-### Prerequisites
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Gideonnz/Manga-TL)
 
-- Node.js 20+
-- Python 3.8+
-- (Optional) Docker for containerized services
-
-### 1. Clone & Install
-
+Or manually:
 ```bash
 git clone https://github.com/Gideonnz/Manga-TL.git
 cd Manga-TL
+# Push to your GitHub
+# Import in Vercel
+```
 
-# Install Node dependencies
+### 3. Environment Variables (Vercel Dashboard)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_APP_URL` | Yes | Your Vercel URL |
+| `ADMIN_PASSWORD` | Yes | Strong password |
+| `SESSION_SECRET` | Yes | 32+ char random string |
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `R2_ACCOUNT_ID` | Yes | Cloudflare R2 Account ID |
+| `R2_ACCESS_KEY_ID` | Yes | R2 Access Key |
+| `R2_SECRET_ACCESS_KEY` | Yes | R2 Secret Key |
+| `R2_BUCKET_NAME` | Yes | Bucket name (e.g., manga-tl) |
+| `R2_PUBLIC_URL` | No | Public R2 domain (optional) |
+| `OCR_API_URL` | If OCR enabled | Your OCR API endpoint |
+| `OCR_API_KEY` | If OCR enabled | OCR API key |
+| `MTL_PROVIDER` | If MTL enabled | `deepl`, `libretranslate`, `google`, `openai` |
+| `DEEPL_API_KEY` | If DeepL | DeepL API key |
+| `LIBRETRANSLATE_URL` | If LibreTranslate | LibreTranslate endpoint |
+| `LIBRETRANSLATE_API_KEY` | If LibreTranslate | API key |
+| `GOOGLE_TRANSLATE_API_KEY` | If Google | Google Translate API key |
+| `OPENAI_API_KEY` | If OpenAI | OpenAI-compatible API key |
+| `OPENAI_API_URL` | If OpenAI | API base URL |
+| `OPENAI_MODEL` | If OpenAI | Model name (default: gpt-4o-mini) |
+
+### 4. Database Setup
+
+```bash
+# Local development
+npx prisma db push
+
+# Production - run once after first deploy
+npx prisma migrate deploy
+```
+
+### 5. R2 CORS Configuration
+
+In Cloudflare R2 dashboard → Bucket → Settings → CORS Policy:
+```json
+[
+  {
+    "AllowedOrigins": ["https://your-domain.vercel.app"],
+    "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+## Supported Providers
+
+### Machine Translation
+
+| Provider | Env Vars | Notes |
+|----------|----------|-------|
+| **DeepL** | `DEEPL_API_KEY`, `DEEPL_API_URL` | Best quality, free tier 500k chars/mo |
+| **LibreTranslate** | `LIBRETRANSLATE_URL`, `LIBRETRANSLATE_API_KEY` | Self-hosted or public instance |
+| **Google Translate** | `GOOGLE_TRANSLATE_API_KEY` | Pay per character |
+| **OpenAI-compatible** | `OPENAI_API_KEY`, `OPENAI_API_URL`, `OPENAI_MODEL` | OpenRouter, Together, etc. |
+
+### OCR
+
+Host your own Manga-OCR API (FastAPI) or use:
+- Google Cloud Vision API
+- AWS Textract
+- Custom trained model
+
+API Contract:
+```json
+POST /ocr
+{ "image_url": "https://..." }
+→ { "bubbles": [{ "x": 10, "y": 20, "width": 30, "height": 15, "text": "...", "confidence": 0.95 }] }
+```
+
+## Local Development
+
+```bash
+# Install deps
 npm install
 
-# Setup environment
+# Setup env
 cp .env.example .env
-# Edit .env with your settings
-```
+# Fill in your values
 
-### 2. Database Setup
+# Database
+npx prisma db push
 
-```bash
-# Push schema to SQLite
-npm run db:push
-
-# (Optional) Open Prisma Studio
-npm run db:studio
-```
-
-### 3. Start OCR Service (Terminal 1)
-
-```bash
-# Option A: Python script (recommended)
-python scripts/setup-ocr.py
-# Then run:
-source venv-ocr/bin/activate
-python ocr_server.py
-
-# Option B: Docker
-docker compose up ocr -d
-```
-
-### 4. Start MTL Service (Terminal 2)
-
-```bash
-# Option A: Ollama (recommended for quality)
-./scripts/setup-mtl.sh ollama
-# Then in another terminal:
-ollama serve
-
-# Option B: LibreTranslate (Docker)
-docker compose up libretranslate -d
-```
-
-### 4. Start Development Server (Terminal 3)
-
-```bash
+# Dev server
 npm run dev
 ```
-
-Open http://localhost:3000
-
-Default password: `changeme123` (change in `.env`)
 
 ## Project Structure
 
 ```
 manga-tl/
-├── app/                    # Next.js App Router
-│   ├── (app)/             # Protected routes
-│   │   ├── dashboard/     # Series/chapter management
-│   │   ├── editor/        # Bubble editor
-│   │   └── reader/        # Public reader
-│   ├── api/               # API routes
-│   │   ├── auth/          # Login/logout
-│   │   ├── series/        # Series CRUD
-│   │   ├── chapters/      # Chapter CRUD + pages/OCR/translate/export
-│   │   └── images/        # Image serving
-│   └── login/             # Login page
+├── app/
+│   ├── (app)/           # Protected routes
+│   │   ├── dashboard/   # Series/Chapter management
+│   │   ├── editor/      # Bubble editor
+│   │   └── reader/      # Public reader
+│   ├── api/             # Serverless functions
+│   │   ├── auth/
+│   │   ├── series/
+│   │   ├── chapters/
+│   │   └── images/
+│   └── login/
 ├── components/
-│   ├── editor/            # BubbleEditor (Konva canvas)
-│   ├── reader/            # MangaReader (manga/webtoon modes)
-│   └── ui/                # Button, Input, Card
+│   ├── editor/          # BubbleEditor (Konva)
+│   ├── reader/          # MangaReader
+│   └── ui/              # Button, Input, Card
 ├── lib/
-│   ├── prisma.ts          # Prisma client
-│   ├── auth.ts            # Session management
-│   ├── storage.ts         # Local file storage
-│   ├── ocr.ts             # OCR API client
-│   ├── mtl.ts             # Translation client (Ollama/LibreTranslate)
-│   └── api.ts             # Client-side API helpers
+│   ├── prisma.ts        # Prisma client
+│   ├── auth.ts          # Iron-session auth
+│   ├── storage.ts       # R2/S3 uploads
+│   ├── ocr.ts           # OCR API client
+│   ├── mtl.ts           # MTL providers
+│   └── utils.ts
 ├── prisma/
-│   └── schema.prisma      # Database schema
-├── scripts/
-│   ├── setup-ocr.py       # Manga-OCR setup
-│   └── setup-mtl.sh       # Ollama/LibreTranslate setup
-├── docker-compose.yml     # Containerized services
-└── Dockerfile.ocr         # OCR service image
+│   └── schema.prisma    # PostgreSQL schema
+└── package.json
 ```
-
-## Usage Workflow
-
-1. **Create Series** - Dashboard → "Series Baru"
-2. **Add Chapter** - Click series → "Tambah Chapter" → Fill number → Upload images
-3. **Run OCR** - Open Editor → Click "OCR" button per page
-4. **Review & Edit** - Click bubbles to adjust position/size, edit text
-5. **Machine Translate** - Click language button (ID/EN) for auto-translation
-6. **Proofread** - Manually fix translations in editor
-7. **Export** - Click "Export JSON" for typesetting
-8. **Preview** - Click "Preview" to test reader mode
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ADMIN_PASSWORD` | `changeme123` | Login password |
-| `SESSION_SECRET` | - | 32+ char secret |
-| `DATABASE_URL` | `file:./data/manga-tl.db` | SQLite path |
-| `UPLOAD_DIR` | `./data/uploads` | Image storage |
-| `OCR_API_URL` | `http://localhost:8001` | Manga-OCR endpoint |
-| `OCR_ENABLED` | `true` | Enable OCR |
-| `OLLAMA_API_URL` | `http://localhost:11434` | Ollama endpoint |
-| `OLLAMA_MODEL` | `qwen2.5:7b` | Model for translation |
-| `MTL_ENABLED` | `true` | Enable MTL |
-| `LIBRETRANSLATE_URL` | `http://localhost:5000` | LibreTranslate endpoint |
-
-## Recommended Models
-
-| Model | Size | Best For |
-|-------|------|----------|
-| `qwen2.5:7b` | 4.7 GB | Japanese→Indonesian (recommended) |
-| `qwen2.5:14b` | 9 GB | Higher quality |
-| `llama3.1:8b` | 4.9 GB | General purpose |
-| `gemma2:9b` | 5.4 GB | Alternative |
-
-Pull with: `ollama pull qwen2.5:7b`
-
-## Production Deployment
-
-### Vercel (Frontend) + VPS (Services)
-
-1. Push to GitHub
-2. Import to Vercel
-3. Add environment variables
-4. Deploy OCR/MTL on VPS with Docker Compose
-5. Update API URLs in Vercel env vars
-
-### Docker Compose (All-in-one)
-
-```bash
-docker compose up -d
-```
-
-Requires GPU for OCR/Ollama acceleration (NVIDIA Docker).
 
 ## License
 
-MIT - Free for personal and commercial use.
-
-## Contributing
-
-Issues and PRs welcome! This is a personal project but contributions help everyone.
+MIT

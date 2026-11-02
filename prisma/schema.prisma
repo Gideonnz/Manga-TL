@@ -1,12 +1,12 @@
 // Prisma Schema for Manga Translation App
-// SQLite database (local file)
+// PostgreSQL (Supabase, Neon, Railway, etc.)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -39,7 +39,7 @@ model Chapter {
   number      Float    // supports 1, 1.5, etc.
   title       String?
   volume      Int?
-  language    String   @default("jp") // source language
+  language    String   @default("ja") // source language
   targetLangs String[] @default(["id"]) // target languages
   status      ChapterStatus @default(DRAFT)
   createdAt   DateTime @default(now())
@@ -65,7 +65,7 @@ model Page {
   chapterId String
   chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   number    Int      // page number in chapter
-  imagePath String   // relative path in storage
+  imageKey  String   // R2/S3 object key
   width     Int?
   height    Int?
   createdAt DateTime @default(now())
